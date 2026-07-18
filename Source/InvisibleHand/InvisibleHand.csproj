@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>10.0</LangVersion>
+    <RootNamespace>InvisibleHand</RootNamespace>
+    <AssemblyName>InvisibleHand</AssemblyName>
+    <OutputPath>..\..\Assemblies\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <DebugType>none</DebugType>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <RimWorldWorkshop Condition="'$(RimWorldWorkshop)' == ''">C:\Program Files (x86)\Steam\steamapps\workshop\content\294100</RimWorldWorkshop>
+    <VTEDir>$(RimWorldWorkshop)\2785616901\1.6\Assemblies</VTEDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="1.6.*" />
+    <PackageReference Include="Lib.Harmony" Version="2.3.6" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="VanillaTradingExpanded">
+      <HintPath>$(VTEDir)\VanillaTradingExpanded.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

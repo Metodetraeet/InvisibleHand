@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>Invisible Hand</name>
+  <author>Metodetraeet</author>
+  <packageId>metodetraeet.InvisibleHand</packageId>
+  <supportedVersions>
+    <li>1.6</li>
+  </supportedVersions>
+  <description>Placeholder
+  </description>
+  <modDependencies>
+  <li>
+    <packageId>brrainz.harmony</packageId>
+    <displayName>Harmony</displayName>
+    <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+  </li>
+  <li>
+    <packageId>VanillaExpanded.VanillaTradingExpanded</packageId>
+    <displayName>Vanilla Trading Expanded</displayName>
+    <steamWorkshopUrl>steam://url/CommunityFilePage/2785616901</steamWorkshopUrl>
+  </li>
+</modDependencies>
+<loadAfter>
+  <li>brrainz.harmony</li>
+  <li>VanillaExpanded.VanillaTradingExpanded</li>
+</loadAfter>
+</ModMetaData>
