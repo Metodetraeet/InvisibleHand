@@ -1,0 +1,63 @@
+using System.Collections.Generic;
+using System.Text;
+using RimWorld;
+using VanillaTradingExpanded;
+using Verse;
+
+namespace InvisibleHand;
+
+public class MarketState : GameComponent
+{
+    public static MarketState Instance;
+
+    public Dictionary<ThingDef, float> stock = new();
+    public Dictionary<ThingDef, float> pendingUnits = new();
+
+    private List<ThingDef> stockKeys;
+    private List<float> stockValues;
+    private List<ThingDef> pendingKeys;
+    private List<float> pendingValues;
+
+    public MarketState(Game game)
+    {
+        Instance = this;
+    }
+
+    public void RegisterTrade(ThingDef def, float units)
+    {
+        if (def == null || Utils.tradeableItemsToIgnore.Contains(def))
+        {
+            return;
+        }
+        pendingUnits.TryGetValue(def, out var current);
+        pendingUnits[def] = current + units;
+    }
+
+    public override void GameComponentTick()
+    {
+        if (Find.TickManager.TicksGame % GenDate.TicksPerDay != 0 || pendingUnits.Count == 0)
+        {
+            return;
+        }
+        var sb = new StringBuilder("[Invisible Hand] Daily buffer:");
+        foreach (var kvp in pendingUnits)
+        {
+            sb.Append($" {kvp.Key.defName}={kvp.Value:F0}");
+        }
+        Log.Message(sb.ToString());
+    }
+
+    public override void ExposeData()
+    {
+        base.ExposeData();
+        Scribe_Collections.Look(ref stock, "stock", LookMode.Def, LookMode.Value, ref stockKeys, ref stockValues);
+        Scribe_Collections.Look(ref pendingUnits, "pendingUnits", LookMode.Def, LookMode.Value, ref pendingKeys, ref pendingValues);
+        if (Scribe.mode == LoadSaveMode.PostLoadInit)
+        {
+            stock ??= new Dictionary<ThingDef, float>();
+            pendingUnits ??= new Dictionary<ThingDef, float>();
+            stock.RemoveAll(kvp => kvp.Key == null);
+            pendingUnits.RemoveAll(kvp => kvp.Key == null);
+        }
+    }
+}
