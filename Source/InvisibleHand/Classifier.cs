@@ -12,6 +12,7 @@ namespace InvisibleHand;
 public static class Classifier
 {
     public const float MaxSaneMarketValue = 50_000f; //sanity check for market value. 
+    public const float MaxRawMaterialUnitValue = 200f; //simple heuristic to separate raw materials from what should be perceived as collectibles
     private static readonly Dictionary<ThingDef, Archetype> cache = new();
 
     public static Archetype Classify(ThingDef def)
@@ -59,7 +60,7 @@ public static class Classifier
         }
         if (def.tradeTags != null)
         {
-            if (def.tradeTags.Contains("Artifact") || def.tradeTags.Contains("ExoticMisc"))
+            if (def.tradeTags.Contains("Artifact") || def.tradeTags.Contains("ExoticMisc") || def.tradeTags.Contains("Techprint"))
             {
                 return Archetype.Collectible;
             }
@@ -84,7 +85,9 @@ public static class Classifier
         }
         if (def.CountAsResource || def.IsStuff)
         {
-            return Archetype.RawMaterial;
+            return VanillaMarketValue(def) < MaxRawMaterialUnitValue
+                ? Archetype.RawMaterial
+                : Archetype.Collectible;
         }
         if (def.HasComp(typeof(CompQuality)) && def.stackLimit == 1)
         {
