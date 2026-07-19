@@ -69,7 +69,7 @@ public static class Classifier
                 return Archetype.Manufactured;
             }
         }
-        if (def.smallVolume && def.IsStuff)
+        if (def.smallVolume && def.IsStuff) //smallVolume is used as a heuristic for precious metals. Jade is added as a patch
         {
             return Archetype.PreciousDurable;
         }
@@ -148,8 +148,8 @@ public static class Classifier
             .ToList();
     }
 
-    [DebugAction("Invisible Hand", "Dump market classification",
-    allowedGameStates = AllowedGameStates.Playing)]
+[DebugAction("Invisible Hand", "Dump market classification",
+        allowedGameStates = AllowedGameStates.Playing)]
     private static void DumpClassification()
     {
         var items = Utils.cachedTradeableItems;
@@ -161,11 +161,12 @@ public static class Classifier
 
         var sb = new StringBuilder();
         sb.AppendLine("sep=;");
-        sb.AppendLine("defName;label;modSource;category;archetype;marketValue;depthDays;alpha;demandElasticity;supplyElasticity;drainCap");
+        sb.AppendLine("defName;label;modSource;category;archetype;marketValue;depthDays;alpha;demandElasticity;supplyElasticity;drainCap;flowSilverPerDay;c0UnitsPerDay;equilibriumStock;currentStock");
         foreach (var def in items.OrderBy(d => Classify(d).ToString()).ThenBy(d => d.defName))
         {
             var archetype = Classify(def);
             string profileCols;
+            string econCols = ";;;";
             if (archetype == Archetype.Excluded)
             {
                 profileCols = ";;;;";
@@ -179,6 +180,16 @@ public static class Classifier
                     p.demandElasticity.ToString("F2"),
                     p.supplyElasticity.ToString("F2"),
                     p.drainCap.ToString("F2"));
+                var ms = MarketState.Instance;
+                if (ms != null && ms.c0Units.TryGetValue(def, out var c0))
+                {
+                    ms.stock.TryGetValue(def, out var st);
+                    econCols = string.Join(";",
+                        (c0 * VanillaMarketValue(def)).ToString("F1"),
+                        c0.ToString("F3"),
+                        (p.depthDays * c0).ToString("F1"),
+                        st.ToString("F1"));
+                }
             }
             sb.AppendLine(string.Join(";",
                 def.defName,
@@ -187,7 +198,8 @@ public static class Classifier
                 def.category.ToString(),
                 archetype.ToString(),
                 VanillaMarketValue(def).ToString("F2"),
-                profileCols));
+                profileCols,
+                econCols));
         }
         var path = Path.Combine(GenFilePaths.SaveDataFolderPath, "InvisibleHand_Classification.csv");
         File.WriteAllText(path, sb.ToString());

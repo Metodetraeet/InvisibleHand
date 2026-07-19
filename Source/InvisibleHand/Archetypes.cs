@@ -70,6 +70,15 @@ public static class MarketProfiles //tune later!
     };
 }
 
+public static class MarketTuning
+{
+    public const float ReferenceWorldFlow = 50_000f; //ReferenceWorldFlow is the one absolute number in the model. The other numbers are clamps
+    public const float ActivityRatioMin = 0.25f;
+    public const float ActivityRatioMax = 2.0f;
+    public const float InitPriceRatioMin = 0.2f;
+    public const float InitPriceRatioMax = 5.0f;
+}
+
 public class MarketProfileExtension : DefModExtension
 {
     public Archetype archetype = Archetype.Unset;
