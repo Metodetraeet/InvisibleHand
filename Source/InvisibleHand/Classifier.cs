@@ -66,14 +66,14 @@ public static class Classifier
         if (ext != null)
         {
             return new MarketProfile(ext.depthDays, ext.alpha, ext.demandElasticity,
-                ext.supplyElasticity, ext.drainCap, 0f);
+                ext.supplyElasticity, ext.drainCap);
         }
         var profile = MarketProfiles.ByArchetype[Classify(def)];
         if (def.HasComp(typeof(CompRottable))) //perishables get shallower depth
         {
             return new MarketProfile(profile.depthDays * 0.6f, profile.alpha,
                 profile.demandElasticity, profile.supplyElasticity,
-                profile.drainCap, profile.budgetShare);
+                profile.drainCap);
         }
         return profile;
     }
