@@ -33,7 +33,7 @@ public static class Classifier
         {
             return ext.archetype;
         }
-        if (def.BaseMarketValue > MaxSaneMarketValue)
+        if (VanillaMarketValue(def) > MaxSaneMarketValue)
         {
             return Archetype.Excluded;
         }
@@ -146,7 +146,7 @@ public static class Classifier
     }
 
     [DebugAction("Invisible Hand", "Dump market classification",
-        allowedGameStates = AllowedGameStates.Playing)]
+    allowedGameStates = AllowedGameStates.Playing)]
     private static void DumpClassification()
     {
         var items = Utils.cachedTradeableItems;
@@ -157,21 +157,34 @@ public static class Classifier
             string.Join(", ", counts));
 
         var sb = new StringBuilder();
-        sb.AppendLine("defName;label;modSource;archetype;marketValue;depthDays;alpha;demandElasticity;supplyElasticity;drainCap");
+        sb.AppendLine("sep=;");
+        sb.AppendLine("defName;label;modSource;category;archetype;marketValue;depthDays;alpha;demandElasticity;supplyElasticity;drainCap");
         foreach (var def in items.OrderBy(d => Classify(d).ToString()).ThenBy(d => d.defName))
         {
-            var p = ProfileFor(def);
+            var archetype = Classify(def);
+            string profileCols;
+            if (archetype == Archetype.Excluded)
+            {
+                profileCols = ";;;;";
+            }
+            else
+            {
+                var p = ProfileFor(def);
+                profileCols = string.Join(";",
+                    p.depthDays.ToString("F0"),
+                    p.alpha.ToString("F2"),
+                    p.demandElasticity.ToString("F2"),
+                    p.supplyElasticity.ToString("F2"),
+                    p.drainCap.ToString("F2"));
+            }
             sb.AppendLine(string.Join(";",
                 def.defName,
                 def.label,
                 def.modContentPack?.Name ?? "unknown",
-                Classify(def).ToString(),
-                def.BaseMarketValue.ToString("F2"),
-                p.depthDays.ToString("F0"),
-                p.alpha.ToString("F2"),
-                p.demandElasticity.ToString("F2"),
-                p.supplyElasticity.ToString("F2"),
-                p.drainCap.ToString("F2")));
+                def.category.ToString(),
+                archetype.ToString(),
+                VanillaMarketValue(def).ToString("F2"),
+                profileCols));
         }
         var path = Path.Combine(GenFilePaths.SaveDataFolderPath, "InvisibleHand_Classification.csv");
         File.WriteAllText(path, sb.ToString());
