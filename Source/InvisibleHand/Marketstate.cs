@@ -23,6 +23,9 @@ public class MarketState : GameComponent
         Instance = this;
     }
 
+    
+    //units: positive = player sold (supply into market), negative = player bought.
+    //sign is set by the caller in Patches.cs.
     public void RegisterTrade(ThingDef def, float units)
     {
         if (def == null || Utils.tradeableItemsToIgnore.Contains(def))
@@ -56,6 +59,7 @@ public class MarketState : GameComponent
         {
             stock ??= new Dictionary<ThingDef, float>();
             pendingUnits ??= new Dictionary<ThingDef, float>();
+            //drop entries whose ThingDef no longer resolves. Likely caused by mod removals.
             stock.RemoveAll(kvp => kvp.Key == null);
             pendingUnits.RemoveAll(kvp => kvp.Key == null);
         }

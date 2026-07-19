@@ -10,6 +10,6 @@ public static class Startup
     {
          var harmony = new Harmony("metodetraeet.InvisibleHand");
             harmony.PatchAll();
-            Log.Message("[Invisible Hand] Loaded, patches applied.");
+            Log.Message("[Invisible Hand] loaded, patches applied.");
         }
 }
