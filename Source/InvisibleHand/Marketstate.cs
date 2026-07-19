@@ -63,6 +63,8 @@ public class MarketState : GameComponent
             stock ??= new Dictionary<ThingDef, float>();
             pendingUnits ??= new Dictionary<ThingDef, float>();
             //drop entries whose ThingDef no longer resolves. Likely caused by mod removals.
+            stock.RemoveAll(kvp => kvp.Key == null);
+            pendingUnits.RemoveAll(kvp => kvp.Key == null);
             stock.RemoveAll(kvp => Classifier.Classify(kvp.Key) == Archetype.Excluded);
             pendingUnits.RemoveAll(kvp => Classifier.Classify(kvp.Key) == Archetype.Excluded);
         }
