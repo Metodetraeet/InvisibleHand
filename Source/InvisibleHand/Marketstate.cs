@@ -3,6 +3,7 @@ using System.Text;
 using RimWorld;
 using VanillaTradingExpanded;
 using Verse;
+using LudeonTK;
 
 namespace InvisibleHand;
 
@@ -68,5 +69,22 @@ public class MarketState : GameComponent
             stock.RemoveAll(kvp => Classifier.Classify(kvp.Key) == Archetype.Excluded);
             pendingUnits.RemoveAll(kvp => Classifier.Classify(kvp.Key) == Archetype.Excluded);
         }
+    }
+
+    [DebugAction("Invisible Hand", "Dump pending trade buffer",
+    allowedGameStates = AllowedGameStates.PlayingOnMap)]
+    private static void DumpPendingBuffer()
+    {
+        if (Instance == null || Instance.pendingUnits.Count == 0)
+        {
+            Log.Message("[Invisible Hand] Pending buffer is empty.");
+            return;
+        }
+        var sb = new StringBuilder("[Invisible Hand] Pending buffer:");
+        foreach (var kvp in Instance.pendingUnits)
+        {
+            sb.Append($" {kvp.Key.defName}={kvp.Value:F0}");
+        }
+        Log.Message(sb.ToString());
     }
 }
