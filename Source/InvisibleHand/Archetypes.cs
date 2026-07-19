@@ -5,6 +5,8 @@ namespace InvisibleHand;
 
 public enum Archetype
 {
+    Unset, //never assigned by classifier
+    Excluded,
     Food,
     LuxuryConsumable,
     Medical,
@@ -12,10 +14,10 @@ public enum Archetype
     PreciousDurable,
     Manufactured,
     Collectible,
+    Livestock,
+    Slaves,
     General
 }
-
-
 
 public readonly struct MarketProfile
 {
@@ -47,27 +49,34 @@ public static class MarketProfiles //tune later!
         { Archetype.PreciousDurable,  new MarketProfile(120f, 1.5f, 0.3f, 0.6f, 2.0f) },
         { Archetype.Manufactured,     new MarketProfile(45f,  1.0f, 0.7f, 0.5f, 2.5f) },
         { Archetype.Collectible,      new MarketProfile(90f,  1.3f, 0.5f, 0.3f, 2.0f) },
+        { Archetype.Livestock,        new MarketProfile(35f,  0.9f, 0.6f, 0.6f, 2.0f) },
+        { Archetype.Slaves,           new MarketProfile(25f,  1.2f, 0.5f, 0.3f, 1.5f) },
         { Archetype.General,          new MarketProfile(45f,  1.0f, 0.6f, 0.6f, 2.5f)}
     };
 
+
     public static readonly Dictionary<Archetype, float> BudgetShareByArchetype = new() //fraction of total market spend. sums to 1.0 across all archetypes. Used to estimate market size for each archetype.
-{
-    { Archetype.Food, 0.30f },
-    { Archetype.RawMaterial, 0.25f },
-    { Archetype.Manufactured, 0.15f },
-    { Archetype.LuxuryConsumable, 0.12f },
-    { Archetype.Medical, 0.06f },
-    { Archetype.PreciousDurable, 0.05f },
-    { Archetype.General, 0.05f },
-    { Archetype.Collectible, 0.02f }
-};
+    {
+        { Archetype.Food, 0.25f },
+        { Archetype.RawMaterial, 0.22f },
+        { Archetype.Manufactured, 0.14f },
+        { Archetype.LuxuryConsumable, 0.11f },
+        { Archetype.Livestock, 0.08f },
+        { Archetype.Medical, 0.06f },
+        { Archetype.PreciousDurable, 0.05f },
+        { Archetype.General, 0.04f },
+        { Archetype.Slaves, 0.03f },
+        { Archetype.Collectible, 0.02f }
+    };
 }
 
 public class MarketProfileExtension : DefModExtension
 {
-    public float depthDays = 45f;
-    public float alpha = 1.0f;
-    public float demandElasticity = 0.6f;
-    public float supplyElasticity = 0.6f;
-    public float drainCap = 2.5f;
+    public Archetype archetype = Archetype.Unset;
+    public float depthDays = -1f;
+    public float alpha = -1f;
+    public float demandElasticity = -1f;
+    public float supplyElasticity = -1f;
+    public float drainCap = -1f;
 }
+

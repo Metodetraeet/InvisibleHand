@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Patch>
+  <Operation Class="PatchOperationAddModExtension">
+    <xpath>/Defs/ThingDef[defName="Jade"]</xpath>
+    <value>
+      <li Class="InvisibleHand.MarketProfileExtension">
+        <archetype>PreciousDurable</archetype>
+      </li>
+    </value>
+  </Operation>
+</Patch>

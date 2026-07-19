@@ -28,13 +28,16 @@ public class MarketState : GameComponent
     //sign is set by the caller in Patches.cs.
     public void RegisterTrade(ThingDef def, float units)
     {
-        if (def == null || Utils.tradeableItemsToIgnore.Contains(def))
+        if (def == null
+            || Utils.tradeableItemsToIgnore.Contains(def)
+            || Classifier.Classify(def) == Archetype.Excluded)
         {
             return;
         }
         pendingUnits.TryGetValue(def, out var current);
         pendingUnits[def] = current + units;
     }
+    
 
     public override void GameComponentTick()
     {
@@ -60,8 +63,8 @@ public class MarketState : GameComponent
             stock ??= new Dictionary<ThingDef, float>();
             pendingUnits ??= new Dictionary<ThingDef, float>();
             //drop entries whose ThingDef no longer resolves. Likely caused by mod removals.
-            stock.RemoveAll(kvp => kvp.Key == null);
-            pendingUnits.RemoveAll(kvp => kvp.Key == null);
+            stock.RemoveAll(kvp => Classifier.Classify(kvp.Key) == Archetype.Excluded);
+            pendingUnits.RemoveAll(kvp => Classifier.Classify(kvp.Key) == Archetype.Excluded);
         }
     }
 }

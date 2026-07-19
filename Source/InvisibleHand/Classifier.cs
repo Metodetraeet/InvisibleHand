@@ -11,6 +11,7 @@ namespace InvisibleHand;
 
 public static class Classifier
 {
+    public const float MaxSaneMarketValue = 50_000f; //sanity check for market value. 
     private static readonly Dictionary<ThingDef, Archetype> cache = new();
 
     public static Archetype Classify(ThingDef def)
@@ -27,6 +28,21 @@ public static class Classifier
     private static Archetype ClassifyInner(ThingDef def)
     {
         //order is significant. First match wins
+        var ext = def.GetModExtension<MarketProfileExtension>();
+        if (ext != null && ext.archetype != Archetype.Unset)
+        {
+            return ext.archetype;
+        }
+        if (def.BaseMarketValue > MaxSaneMarketValue)
+        {
+            return Archetype.Excluded;
+        }
+        if (def.race != null)
+        {
+            if (def.race.Animal) return Archetype.Livestock;
+            if (def.race.Humanlike) return Archetype.Slaves;
+            return Archetype.Excluded;
+        }
         if (def.IsDrug)
         {
             return def.ingestible?.drugCategory == DrugCategory.Medical
@@ -41,6 +57,17 @@ public static class Classifier
         {
             return Archetype.Food;
         }
+        if (def.tradeTags != null)
+        {
+            if (def.tradeTags.Contains("Artifact") || def.tradeTags.Contains("ExoticMisc"))
+            {
+                return Archetype.Collectible;
+            }
+            if (def.tradeTags.Contains("TechHediff"))
+            {
+                return Archetype.Manufactured;
+            }
+        }
         if (def.smallVolume && def.IsStuff)
         {
             return Archetype.PreciousDurable;
@@ -48,6 +75,12 @@ public static class Classifier
         if (def.IsWeapon || def.IsApparel)
         {
             return Archetype.Manufactured;
+        }
+        if (def.category == ThingCategory.Building)
+        {
+            return def.thingCategories?.Contains(ThingCategoryDefOf.BuildingsArt) == true
+                ? Archetype.Collectible
+                : Archetype.Manufactured;
         }
         if (def.CountAsResource || def.IsStuff)
         {
@@ -62,20 +95,54 @@ public static class Classifier
 
     public static MarketProfile ProfileFor(ThingDef def)
     {
+        var archetype = Classify(def);
+        if (archetype == Archetype.Excluded)
+        {
+            Log.ErrorOnce($"[Invisible Hand] ProfileFor called on excluded def {def.defName}", def.shortHash);
+            return MarketProfiles.ByArchetype[Archetype.General];
+        }
+        var p = MarketProfiles.ByArchetype[archetype];
+        float depth = p.depthDays;
+        float alpha = p.alpha;
+        float ed = p.demandElasticity;
+        float es = p.supplyElasticity;
+        float cap = p.drainCap;
+ 
+        if (def.HasComp(typeof(CompRottable)))
+        {
+            depth *= 0.6f; //perishables get shallower depth
+        }
+ 
         var ext = def.GetModExtension<MarketProfileExtension>();
         if (ext != null)
         {
-            return new MarketProfile(ext.depthDays, ext.alpha, ext.demandElasticity,
-                ext.supplyElasticity, ext.drainCap);
+            if (ext.depthDays >= 0f) depth = ext.depthDays;
+            if (ext.alpha >= 0f) alpha = ext.alpha;
+            if (ext.demandElasticity >= 0f) ed = ext.demandElasticity;
+            if (ext.supplyElasticity >= 0f) es = ext.supplyElasticity;
+            if (ext.drainCap >= 0f) cap = ext.drainCap;
         }
-        var profile = MarketProfiles.ByArchetype[Classify(def)];
-        if (def.HasComp(typeof(CompRottable))) //perishables get shallower depth
+        return new MarketProfile(depth, alpha, ed, es, cap);
+    }
+
+    public static float VanillaMarketValue(ThingDef def) //temporarry home. Borrowed from VTE authors
+    {
+        StatWorker_GetBaseValueFor_Patch.outputOnlyVanilla = true;
+        try
         {
-            return new MarketProfile(profile.depthDays * 0.6f, profile.alpha,
-                profile.demandElasticity, profile.supplyElasticity,
-                profile.drainCap);
+            return def.GetStatValueAbstract(StatDefOf.MarketValue);
         }
-        return profile;
+        finally
+        {
+            StatWorker_GetBaseValueFor_Patch.outputOnlyVanilla = false;
+        }
+    }
+
+    public static List<ThingDef> BuildUniverse() //temporary home
+    {
+        return Utils.cachedTradeableItems
+            .Where(d => Classify(d) != Archetype.Excluded)
+            .ToList();
     }
 
     [DebugAction("Invisible Hand", "Dump market classification",
