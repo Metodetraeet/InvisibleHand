@@ -13,11 +13,10 @@ public static class TradingManager_RegisterSoldThing_Patch
     }
 }
 
-
 [HarmonyPatch(typeof(TradingManager), nameof(TradingManager.RegisterPurchasedThing))]
 public static class TradingManager_RegisterPurchasedThing_Patch
 {
-    public static void Postfix(Thing soldThing, int countToSell)
+    public static void Postfix(Thing soldThing, int countToSell) //soldThing is not a typo (from me). VTE declares RegisterPurchasedThing(Thing soldThing, ...)
     {
         MarketState.Instance?.RegisterTrade(soldThing.def, -countToSell);
     }
