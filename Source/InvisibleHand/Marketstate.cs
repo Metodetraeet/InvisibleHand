@@ -18,6 +18,7 @@ public class MarketState : GameComponent
     public Dictionary<ThingDef, float> pendingUnits = new();
     private float baselineActivity;
     private bool engineActive;
+    private float smoothedActivity;
     public float BaselineActivity => baselineActivity; //flagged for later removal
 
     //derived state
@@ -46,7 +47,11 @@ public class MarketState : GameComponent
         {
             baselineActivity = activity;
         }
-        ComputeFlows(activity);
+        if (smoothedActivity <= 0f)
+        {
+            smoothedActivity = activity;
+        }
+        ComputeFlows(smoothedActivity);
         InitializeStocks();
         if (!engineActive)
         {
@@ -168,7 +173,8 @@ public class MarketState : GameComponent
             return;
         }
         //changes in number of settlements impact maket depth daily
-        ComputeFlows(CurrentActivity());
+        smoothedActivity = Mathf.Lerp(smoothedActivity, CurrentActivity(), 1f / 15f);
+        ComputeFlows(smoothedActivity);
         if (pendingUnits.Count > 0)
         {
             var sb = new StringBuilder("[Invisible Hand] Daily buffer:");
@@ -187,6 +193,8 @@ public class MarketState : GameComponent
         Scribe_Collections.Look(ref stock, "stock", LookMode.Def, LookMode.Value, ref stockKeys, ref stockValues);
         Scribe_Collections.Look(ref pendingUnits, "pendingUnits", LookMode.Def, LookMode.Value, ref pendingKeys, ref pendingValues);
         Scribe_Values.Look(ref baselineActivity, "baselineActivity", 0f);
+        Scribe_Values.Look(ref engineActive, "engineActive", false);
+        Scribe_Values.Look(ref smoothedActivity, "smoothedActivity", 0f);
         if (Scribe.mode == LoadSaveMode.PostLoadInit)
         {
             stock ??= new Dictionary<ThingDef, float>();
@@ -226,9 +234,9 @@ public class MarketState : GameComponent
             return;
         }
         float activity = CurrentActivity();
-        float ratio = Instance.baselineActivity > 0f ? activity / Instance.baselineActivity : 1f;
+        float ratio = Instance.baselineActivity > 0f ? Instance.smoothedActivity / Instance.baselineActivity : 1f;
         Log.Message("[Invisible Hand] Market status:\n" +
-            $"  activity={activity:F0}  baseline={Instance.baselineActivity:F0}  ratio={ratio:F2} " +
+            $"  activity={activity:F0} (smoothed {Instance.smoothedActivity:F0})  baseline={Instance.baselineActivity:F0}  ratio={ratio:F2} " +
             $"(clamped {MarketTuning.ActivityRatioMin}-{MarketTuning.ActivityRatioMax})\n" +
             $"  worldFlow={Instance.worldFlow:F0} silver/day  universe={Instance.universe.Count} defs  " +
             $"stocked={Instance.stock.Count}  buffered={Instance.pendingUnits.Count}");
