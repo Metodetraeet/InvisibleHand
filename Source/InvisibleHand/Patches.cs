@@ -22,3 +22,33 @@ public static class TradingManager_RegisterPurchasedThing_Patch
     }
 }
 
+//overrides VTE's price simulation//
+
+[HarmonyPatch(typeof(TradingManager), "ProcessPlayerTransactions")]
+public static class TradingManager_ProcessPlayerTransactions_Patch
+{
+    public static bool Prefix()
+    {
+        //with its consumer disabled, VTE's silver buffer would grow forever
+        TradingManager.Instance?.thingsAffectedBySoldPurchasedMarketValue?.Clear();
+        return false;
+    }
+}
+ 
+[HarmonyPatch(typeof(TradingManager), "SimulateWorldTrading")]
+public static class TradingManager_SimulateWorldTrading_Patch
+{
+    public static bool Prefix() => false;
+}
+ 
+[HarmonyPatch(typeof(TradingManager), "DoPriceRebalances")]
+public static class TradingManager_DoPriceRebalances_Patch
+{
+    public static bool Prefix() => false;
+}
+ 
+[HarmonyPatch(typeof(TradingManager), "SeasonalPriceUpdates")]
+public static class TradingManager_SeasonalPriceUpdates_Patch
+{
+    public static bool Prefix() => false;
+}

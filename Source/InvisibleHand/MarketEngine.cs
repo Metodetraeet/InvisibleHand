@@ -1,0 +1,71 @@
+using UnityEngine;
+using VanillaTradingExpanded;
+using Verse;
+
+namespace InvisibleHand;
+
+//the daily market simulation. Pushes resulting prices into VTE's priceModifiers
+public static class MarketEngine
+{
+    public static void Tick(MarketState st)
+    {
+        var manager = TradingManager.Instance;
+        if (manager == null)
+        {
+            return;
+        }
+        manager.priceModifiers ??= new System.Collections.Generic.Dictionary<ThingDef, float>();
+
+        foreach (var def in st.universe)
+        {
+            if (!st.c0Units.TryGetValue(def, out var c0) || c0 <= 0f)
+            {
+                continue;
+            }
+            var profile = Classifier.ProfileFor(def);
+            float sStar = profile.depthDays * c0;
+            float p0 = Classifier.VanillaMarketValue(def);
+            if (sStar <= 0f || p0 <= 0f)
+            {
+                continue;
+            }
+            st.stock.TryGetValue(def, out var s);
+            if (s <= 0f)
+            {
+                s = sStar; //unstocked def trades at equilibrium
+            }
+
+            //price formed from yesterday's closing stock, flows respond to it today.
+            float rel = PriceRatio(sStar, s, profile.alpha);
+
+            //log-normal flow noise, mean exactly 1, so noise adds texture without adding drift
+            float consumption = c0
+                * Mathf.Min(Mathf.Pow(rel, -profile.demandElasticity), profile.drainCap)
+                * FlowNoise();
+            float production = c0
+                * Mathf.Pow(rel, profile.supplyElasticity)
+                * FlowNoise();
+
+            st.pendingUnits.TryGetValue(def, out var playerNet);
+
+            s = Mathf.Max(s + production - consumption + playerNet,
+                sStar * MarketTuning.StockFloorFraction);
+            st.stock[def] = s;
+
+            manager.priceModifiers[def] = p0 * PriceRatio(sStar, s, profile.alpha);
+        }
+        st.pendingUnits.Clear();
+    }
+
+    private static float PriceRatio(float sStar, float s, float alpha)
+    {
+        return Mathf.Clamp(Mathf.Pow(sStar / s, alpha),
+            MarketTuning.PriceRatioMin, MarketTuning.PriceRatioMax);
+    }
+
+    private static float FlowNoise()
+    {
+        float sigma = MarketTuning.FlowNoiseSigma;
+        return Mathf.Exp(sigma * Rand.Gaussian() - 0.5f * sigma * sigma);
+    }
+}

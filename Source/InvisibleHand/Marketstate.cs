@@ -17,6 +17,7 @@ public class MarketState : GameComponent
     public Dictionary<ThingDef, float> stock = new();
     public Dictionary<ThingDef, float> pendingUnits = new();
     private float baselineActivity;
+    private bool engineActive;
 
     //derived state
     public List<ThingDef> universe = new();
@@ -44,6 +45,11 @@ public class MarketState : GameComponent
         }
         ComputeFlows(activity);
         InitializeStocks();
+        if (!engineActive)
+        {
+            pendingUnits.Clear();
+            engineActive = true;
+        }
     }
 
     public static float CurrentActivity()
