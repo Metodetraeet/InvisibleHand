@@ -9,7 +9,7 @@ namespace InvisibleHand;
 //Logging for balancing and tuning - remove later//
 public static class Telemetry
 {
-    public const int SchemaVersion = 1;
+    public const int SchemaVersion = 2;
     public static bool Enabled = true;
 
     private const string ItemsHeader =
