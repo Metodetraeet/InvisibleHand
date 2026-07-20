@@ -148,6 +148,33 @@ public static class Classifier
             .ToList();
     }
 
+    //catches MarketProfileExtension values that would divide by zero or make the daily map oscillate (alpha*(ed+es) approaching depth)
+    public static void ValidateProfiles(System.Collections.Generic.List<ThingDef> universe)
+    {
+        foreach (var def in universe)
+        {
+            var p = ProfileFor(def);
+            string problem = null;
+            if (p.depthDays <= 0f)
+            {
+                problem = $"depthDays={p.depthDays:F2}";
+            }
+            else if (p.alpha <= 0f || p.demandElasticity < 0f || p.supplyElasticity < 0f || p.drainCap <= 0f)
+            {
+                problem = "zero/negative parameter";
+            }
+            else if (p.alpha * (p.demandElasticity + p.supplyElasticity) > 0.5f * p.depthDays)
+            {
+                problem = $"unstable: alpha*(ed+es)={p.alpha * (p.demandElasticity + p.supplyElasticity):F2} vs depthDays={p.depthDays:F0}";
+            }
+            if (problem != null)
+            {
+                Log.Warning($"[Invisible Hand] Unsafe market profile on {def.defName} " +
+                    $"({def.modContentPack?.Name ?? "unknown mod"}): {problem}. Check MarketProfileExtension values.");
+            }
+        }
+    }
+
 [DebugAction("Invisible Hand", "Dump market classification",
         allowedGameStates = AllowedGameStates.Playing)]
     private static void DumpClassification()

@@ -50,7 +50,7 @@ public static class MarketProfiles //tune later!
         { Archetype.Manufactured,     new MarketProfile(45f,  1.0f, 0.7f, 0.5f, 2.5f) },
         { Archetype.Collectible,      new MarketProfile(90f,  1.3f, 0.5f, 0.3f, 2.0f) },
         { Archetype.Livestock,        new MarketProfile(35f,  0.9f, 0.6f, 0.6f, 2.0f) },
-        { Archetype.Slaves,           new MarketProfile(25f,  1.2f, 0.5f, 0.3f, 1.5f) },
+        { Archetype.Slaves,           new MarketProfile(25f, 1.2f, 0.5f, 0.3f, 2.0f) },
         { Archetype.General,          new MarketProfile(45f,  1.0f, 0.6f, 0.6f, 2.5f)}
     };
 
@@ -78,8 +78,8 @@ public static class MarketTuning
     public const float InitPriceRatioMax = 5.0f;
     public const float PriceRatioMin = 0.1f;   //output clamp
     public const float PriceRatioMax = 10.0f;  //scarcity ceiling
-    public const float StockFloorFraction = 0.02f;
-    public const float FlowNoiseSigma = 0.03f;
+    public const float StockFloorFraction = 0.02f; //floor stock at 2% of equilibrium
+    public const float FlowNoiseSigma = 0.03f; //stddev of the daily log-normal flow noise
 }
 
 public class MarketProfileExtension : DefModExtension

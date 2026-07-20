@@ -39,6 +39,7 @@ public class MarketState : GameComponent
     {
         base.FinalizeInit();
         universe = Classifier.BuildUniverse();
+        Classifier.ValidateProfiles(universe);
         Telemetry.NewSession();
         float activity = CurrentActivity();
         if (baselineActivity <= 0f)
