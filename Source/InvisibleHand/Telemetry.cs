@@ -13,12 +13,18 @@ public static class Telemetry
     public static bool Enabled = true;
 
     private const string ItemsHeader =
-        "schema;gameId;day;defName;archetype;p0;price;priceRatio;stock;sStar;stockRatio;c0;consumption;production;playerNet";
+        "schema;gameId;sessionId;day;defName;archetype;p0;price;priceRatio;stock;sStar;stockRatio;c0;consumption;production;playerNet";
     private const string WorldHeader =
-        "schema;gameId;day;tick;activity;baselineActivity;activityRatio;worldFlow;universeCount";
+        "schema;gameId;sessionId;day;tick;activity;baselineActivity;activityRatio;worldFlow;universeCount";
 
     private static StringBuilder itemRows;
     private static string gameId;
+    private static string sessionId;
+
+    public static void NewSession()
+    {
+        sessionId = System.DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmssZ");
+    }
     private static int day;
 
     private static string ItemsPath => Path.Combine(GenFilePaths.SaveDataFolderPath, "InvisibleHand_Telemetry_Items.csv");
@@ -31,13 +37,14 @@ public static class Telemetry
             return;
         }
         gameId = $"{Find.World.info.seedString}-{Find.World.info.persistentRandomValue}";
+        sessionId ??= System.DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmssZ"); // defensive; FinalizeInit normally mints
         day = Find.TickManager.TicksGame / GenDate.TicksPerDay;
         itemRows = new StringBuilder(256 * st.universe.Count);
-
+ 
         float activity = MarketState.CurrentActivity();
         float ratio = st.BaselineActivity > 0f ? activity / st.BaselineActivity : 1f;
         string worldRow = string.Join(";",
-            SchemaVersion, gameId, day, Find.TickManager.TicksGame,
+            SchemaVersion, gameId, sessionId, day, Find.TickManager.TicksGame,
             activity.ToString("F0"), st.BaselineActivity.ToString("F0"),
             ratio.ToString("F3"), st.worldFlow.ToString("F0"), st.universe.Count);
         Append(WorldPath, WorldHeader, worldRow + "\n");
@@ -53,6 +60,7 @@ public static class Telemetry
         itemRows
             .Append(SchemaVersion).Append(';')
             .Append(gameId).Append(';')
+            .Append(sessionId).Append(';')
             .Append(day).Append(';')
             .Append(def.defName).Append(';')
             .Append(Classifier.Classify(def)).Append(';')
