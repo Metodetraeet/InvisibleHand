@@ -54,7 +54,6 @@ public static class MarketProfiles //tune later!
         { Archetype.General,          new MarketProfile(45f,  1.0f, 0.6f, 0.6f, 2.5f)}
     };
 
-
     public static readonly Dictionary<Archetype, float> BudgetShareByArchetype = new() //fraction of total market spend. sums to 1.0 across all archetypes. Used to estimate market size for each archetype.
     {
         { Archetype.Food, 0.25f },
@@ -77,6 +76,10 @@ public static class MarketTuning
     public const float ActivityRatioMax = 2.0f;
     public const float InitPriceRatioMin = 0.2f;
     public const float InitPriceRatioMax = 5.0f;
+    public const float PriceRatioMin = 0.1f;   //output clamp
+    public const float PriceRatioMax = 10.0f;  //scarcity ceiling
+    public const float StockFloorFraction = 0.02f;
+    public const float FlowNoiseSigma = 0.03f;
 }
 
 public class MarketProfileExtension : DefModExtension
