@@ -166,16 +166,16 @@ public class MarketState : GameComponent
         }
         //changes in number of settlements impact maket depth daily
         ComputeFlows(CurrentActivity());
-        if (pendingUnits.Count == 0)
+        if (pendingUnits.Count > 0)
         {
-            return;
+            var sb = new StringBuilder("[Invisible Hand] Daily buffer:");
+            foreach (var kvp in pendingUnits)
+            {
+                sb.Append($" {kvp.Key.defName}={kvp.Value:F0}");
+            }
+            Log.Message(sb.ToString());
         }
-        var sb = new StringBuilder("[Invisible Hand] Daily buffer:");
-        foreach (var kvp in pendingUnits)
-        {
-            sb.Append($" {kvp.Key.defName}={kvp.Value:F0}");
-        }
-        Log.Message(sb.ToString());
+        MarketEngine.Tick(this);
     }
 
     public override void ExposeData()
