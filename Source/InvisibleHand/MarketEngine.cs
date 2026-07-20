@@ -15,6 +15,7 @@ public static class MarketEngine
             return;
         }
         manager.priceModifiers ??= new System.Collections.Generic.Dictionary<ThingDef, float>();
+        Telemetry.BeginDay(st); //flagged for later removal
 
         foreach (var def in st.universe)
         {
@@ -52,9 +53,12 @@ public static class MarketEngine
                 sStar * MarketTuning.StockFloorFraction);
             st.stock[def] = s;
 
-            manager.priceModifiers[def] = p0 * PriceRatio(sStar, s, profile.alpha);
+            float closing = p0 * PriceRatio(sStar, s, profile.alpha);
+            manager.priceModifiers[def] = closing;
+            Telemetry.Record(def, p0, closing, s, sStar, c0, consumption, production, playerNet); //flagged for later removal
         }
         st.pendingUnits.Clear();
+        Telemetry.EndDay(); //flagged for later removal
     }
 
     private static float PriceRatio(float sStar, float s, float alpha)

@@ -18,6 +18,7 @@ public class MarketState : GameComponent
     public Dictionary<ThingDef, float> pendingUnits = new();
     private float baselineActivity;
     private bool engineActive;
+    public float BaselineActivity => baselineActivity; //flagged for later removal
 
     //derived state
     public List<ThingDef> universe = new();
