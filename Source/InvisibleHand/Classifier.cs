@@ -125,6 +125,16 @@ public static class Classifier
             if (ext.supplyElasticity >= 0f) es = ext.supplyElasticity;
             if (ext.drainCap >= 0f) cap = ext.drainCap;
         }
+          if (float.IsNaN(depth) || float.IsInfinity(depth) || depth <= 0f
+            || float.IsNaN(alpha) || float.IsInfinity(alpha) || alpha <= 0f
+            || float.IsNaN(ed) || float.IsInfinity(ed)
+            || float.IsNaN(es) || float.IsInfinity(es)
+            || ed + es <= 0f
+            || float.IsNaN(cap) || float.IsInfinity(cap) || cap <= 0f)
+        {
+            Log.ErrorOnce($"[Invisible Hand] Invalid market profile on {def.defName}; using General fallback.", def.shortHash ^ 0x5AFE);
+            return MarketProfiles.ByArchetype[Archetype.General];
+        }
         return new MarketProfile(depth, alpha, ed, es, cap);
     }
 
@@ -155,13 +165,22 @@ public static class Classifier
         {
             var p = ProfileFor(def);
             string problem = null;
-            if (p.depthDays <= 0f)
+            if (float.IsNaN(p.depthDays) || float.IsNaN(p.alpha) || float.IsNaN(p.demandElasticity)
+                || float.IsNaN(p.supplyElasticity) || float.IsNaN(p.drainCap))
+            {
+                problem = "NaN parameter"; //NaN would fail ordered comparison below
+            }
+            else if (p.depthDays <= 0f)
             {
                 problem = $"depthDays={p.depthDays:F2}";
             }
             else if (p.alpha <= 0f || p.demandElasticity < 0f || p.supplyElasticity < 0f || p.drainCap <= 0f)
             {
                 problem = "zero/negative parameter";
+            }
+            else if (p.demandElasticity + p.supplyElasticity <= 0f)
+            {
+                problem = "ed+es must be > 0 (market would never recover)";
             }
             else if (p.alpha * (p.demandElasticity + p.supplyElasticity) > 0.5f * p.depthDays)
             {

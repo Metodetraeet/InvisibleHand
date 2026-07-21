@@ -86,10 +86,13 @@ public static class MarketTuning
     public const float ShockMemoryDays = 15f;
     public const float ShockSigma = 0.014f; //sigma 0.014 measured in sim. Stationary price vol lands 1.-3.0% across archetypes
     public static readonly float ShockRho = Mathf.Exp(-1f / ShockMemoryDays);
-    public static readonly float ShockMeanCorrection =
-        0.5f * ShockSigma * ShockSigma / (1f - ShockRho * ShockRho); //mean-one correction (same idea as FlowNoise)
-}
+    public static readonly float ShockMeanCorrection = 0.5f * ShockSigma * ShockSigma / (1f - ShockRho * ShockRho); //mean-one correction (same idea as FlowNoise)
 
+    //news shocks use a separate, slower-decaying field, calibrated so prices peak near VTE's advertised impact before recovering
+    public const float NewsShockEFoldingDays = 30f;
+    public static readonly float NewsShockRho = Mathf.Exp(-1f / NewsShockEFoldingDays);
+    public const float NewsShockMax = 1.5f; //cap on the accumulated news field
+}
 public class MarketProfileExtension : DefModExtension
 {
     public Archetype archetype = Archetype.Unset;

@@ -39,12 +39,26 @@ public static class MarketEngine
             //price formed from yesterday's closing stock, flows respond to it today.
             float rel = PriceRatio(sStar, s, profile.alpha);
 
-            //ambient demand shock. Persistent good-months and bad-months. News events also use this - decay is shared.
+            //ambient demand shock. Persistent good-months and bad-months. 
             st.demandShock.TryGetValue(def, out var shock);
             shock = MarketTuning.ShockRho * shock
                 + MarketTuning.ShockSigma * Rand.Gaussian();
             st.demandShock[def] = shock;
-            float demandMult = Mathf.Exp(shock - MarketTuning.ShockMeanCorrection);
+            st.newsShock.TryGetValue(def, out var news);
+            if (news != 0f)
+            {
+                news *= MarketTuning.NewsShockRho;
+                if (Mathf.Abs(news) < 1e-4f)
+                {
+                    news = 0f;
+                    st.newsShock.Remove(def);
+                }
+                else
+                {
+                    st.newsShock[def] = news;
+                }
+            }
+            float demandMult = Mathf.Exp(shock + news - MarketTuning.ShockMeanCorrection);
 
             //log-normal flow noise, mean exactly 1, so noise adds texture without adding drift
             float consumption = c0
@@ -63,7 +77,7 @@ public static class MarketEngine
 
             float closing = p0 * PriceRatio(sStar, s, profile.alpha);
             manager.priceModifiers[def] = closing;
-            Telemetry.Record(def, p0, closing, s, sStar, c0, consumption, production, playerNet, shock); //flagged for later removal
+            Telemetry.Record(def, p0, closing, s, sStar, c0, consumption, production, playerNet, shock, news); //flagged for later removal
         }
         st.pendingUnits.Clear();
         Telemetry.EndDay(); //flagged for later removal

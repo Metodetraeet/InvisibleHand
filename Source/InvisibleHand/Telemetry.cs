@@ -9,11 +9,11 @@ namespace InvisibleHand;
 //Logging for balancing and tuning - remove later//
 public static class Telemetry
 {
-    public const int SchemaVersion = 3;
+    public const int SchemaVersion = 4;
     public static bool Enabled = true;
 
     private const string ItemsHeader =
-        "schema;gameId;sessionId;day;defName;archetype;p0;price;priceRatio;stock;sStar;stockRatio;c0;consumption;production;playerNet;demandShock";
+        "schema;gameId;sessionId;day;defName;archetype;p0;price;priceRatio;stock;sStar;stockRatio;c0;consumption;production;playerNet;demandShock;newsShock";
     private const string WorldHeader =
         "schema;gameId;sessionId;day;tick;activity;baselineActivity;activityRatio;worldFlow;universeCount";
 
@@ -27,8 +27,8 @@ public static class Telemetry
     }
     private static int day;
 
-    private static string ItemsPath => Path.Combine(GenFilePaths.SaveDataFolderPath, "InvisibleHand_Telemetry_Items.csv");
-    private static string WorldPath => Path.Combine(GenFilePaths.SaveDataFolderPath, "InvisibleHand_Telemetry_World.csv");
+    private static string ItemsPath => Path.Combine(GenFilePaths.SaveDataFolderPath, $"InvisibleHand_Telemetry_Items_v{SchemaVersion}.csv");
+    private static string WorldPath => Path.Combine(GenFilePaths.SaveDataFolderPath, $"InvisibleHand_Telemetry_World_v{SchemaVersion}.csv");
 
     public static void BeginDay(MarketState st)
     {
@@ -50,7 +50,7 @@ public static class Telemetry
         Append(WorldPath, WorldHeader, worldRow + "\n");
     }
 
-    public static void Record(ThingDef def, float p0, float price, float stock, float sStar, float c0, float consumption, float production, float playerNet, float demandShock)
+    public static void Record(ThingDef def, float p0, float price, float stock, float sStar, float c0, float consumption, float production, float playerNet, float demandShock, float newsShock)
     {
         if (!Enabled || itemRows == null)
         {
@@ -73,7 +73,8 @@ public static class Telemetry
             .Append(consumption.ToString("F2")).Append(';')
             .Append(production.ToString("F2")).Append(';')
             .Append(playerNet.ToString("F1")).Append(';')
-            .Append(demandShock.ToString("F4"))
+            .Append(demandShock.ToString("F4")).Append(';')
+            .Append(newsShock.ToString("F4"))
             .Append('\n');
     }
 
