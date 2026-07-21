@@ -16,6 +16,7 @@ public class MarketState : GameComponent
     //scribed state
     public Dictionary<ThingDef, float> stock = new();
     public Dictionary<ThingDef, float> pendingUnits = new();
+    public Dictionary<ThingDef, float> demandShock = new(); //log-multiplier on consumption, AR(1) per def
     private float baselineActivity;
     private bool engineActive;
     private float smoothedActivity;
@@ -30,6 +31,8 @@ public class MarketState : GameComponent
     private List<float> stockValues;
     private List<ThingDef> pendingKeys;
     private List<float> pendingValues;
+    private List<ThingDef> shockKeys;
+    private List<float> shockValues;
 
     public MarketState(Game game)
     {
@@ -192,6 +195,7 @@ public class MarketState : GameComponent
         base.ExposeData();
         Scribe_Collections.Look(ref stock, "stock", LookMode.Def, LookMode.Value, ref stockKeys, ref stockValues);
         Scribe_Collections.Look(ref pendingUnits, "pendingUnits", LookMode.Def, LookMode.Value, ref pendingKeys, ref pendingValues);
+        Scribe_Collections.Look(ref demandShock, "demandShock", LookMode.Def, LookMode.Value, ref shockKeys, ref shockValues);
         Scribe_Values.Look(ref baselineActivity, "baselineActivity", 0f);
         Scribe_Values.Look(ref engineActive, "engineActive", false);
         Scribe_Values.Look(ref smoothedActivity, "smoothedActivity", 0f);
@@ -199,10 +203,13 @@ public class MarketState : GameComponent
         {
             stock ??= new Dictionary<ThingDef, float>();
             pendingUnits ??= new Dictionary<ThingDef, float>();
+            demandShock ??= new Dictionary<ThingDef, float>();
             stock.RemoveAll(kvp => kvp.Key == null);
             pendingUnits.RemoveAll(kvp => kvp.Key == null);
+            demandShock.RemoveAll(kvp => kvp.Key == null);
             stock.RemoveAll(kvp => Classifier.Classify(kvp.Key) == Archetype.Excluded);
             pendingUnits.RemoveAll(kvp => Classifier.Classify(kvp.Key) == Archetype.Excluded);
+            demandShock.RemoveAll(kvp => Classifier.Classify(kvp.Key) == Archetype.Excluded);
         }
     }
 

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Verse;
+using UnityEngine;
 
 namespace InvisibleHand;
 
@@ -80,6 +81,13 @@ public static class MarketTuning
     public const float PriceRatioMax = 10.0f;  //scarcity ceiling
     public const float StockFloorFraction = 0.02f; //floor stock at 2% of equilibrium
     public const float FlowNoiseSigma = 0.03f; //stddev of the daily log-normal flow noise
+
+    //ambient demand shocks: AR(1) log-multiplier per def, 15-day memory
+    public const float ShockMemoryDays = 15f;
+    public const float ShockSigma = 0.014f; //sigma 0.014 measured in sim. Stationary price vol lands 1.-3.0% across archetypes
+    public static readonly float ShockRho = Mathf.Exp(-1f / ShockMemoryDays);
+    public static readonly float ShockMeanCorrection =
+        0.5f * ShockSigma * ShockSigma / (1f - ShockRho * ShockRho); //mean-one correction (same idea as FlowNoise)
 }
 
 public class MarketProfileExtension : DefModExtension
