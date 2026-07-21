@@ -44,6 +44,7 @@ public static class ExecutionPricing
         {
             s = sStar;
         }
+        float sClose = Mathf.Max(s, sStar * MarketTuning.StockFloorFraction); //this is what VTE's price dict (and __result) is anchored to until our later tick
         //include today's not-yet-applied trades, so consecutive deals in the same day walk the curve cumulatively
         st.pendingUnits.TryGetValue(def, out var pending);
         s = Mathf.Max(s + pending, sStar * MarketTuning.StockFloorFraction);
