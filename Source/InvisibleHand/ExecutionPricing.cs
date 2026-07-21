@@ -48,22 +48,30 @@ public static class ExecutionPricing
         st.pendingUnits.TryGetValue(def, out var pending);
         s = Mathf.Max(s + pending, sStar * MarketTuning.StockFloorFraction);
 
+        float relSpot = Mathf.Clamp(Mathf.Pow(sStar / s, profile.alpha),
+            MarketTuning.PriceRatioMin, MarketTuning.PriceRatioMax);
         float x = count / s;
         float factor;
         if (selling)
         {
             factor = AvgOverSpot(x, profile.alpha, up: true);
         }
-        else
+        else if (x <= 0.95f)
         {
-            x = Mathf.Min(x, 0.95f); //cannot buy a market to literal zero
             factor = AvgOverSpot(x, profile.alpha, up: false);
         }
-        float relSpot = Mathf.Clamp(Mathf.Pow(sStar / s, profile.alpha),
-            MarketTuning.PriceRatioMin, MarketTuning.PriceRatioMax);
+        else
+        {
+            //the curve prices the first 95% of available stock. Any excess units are priced at the band ceiling, so marginal prices never fall as order size grows
+            float curveUnits = 0.95f * s;
+            float ceilingUnits = count - curveUnits;
+            float curveAvg = AvgOverSpot(0.95f, profile.alpha, up: false);
+            float ceilingFactor = MarketTuning.PriceRatioMax / relSpot;
+            factor = (curveAvg * curveUnits + ceilingFactor * ceilingUnits) / count;
+        }
+        //keep the implied average inside the global price band
         return Mathf.Clamp(factor,
-            MarketTuning.PriceRatioMin / relSpot,
-            MarketTuning.PriceRatioMax / relSpot);
+            MarketTuning.PriceRatioMin / relSpot, MarketTuning.PriceRatioMax / relSpot);
     }
 
     //path-average execution price relative to spot, p(S) ∝ S^-alpha
