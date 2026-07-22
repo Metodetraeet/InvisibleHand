@@ -73,9 +73,18 @@ public static class MarketEngine
 
             s = Mathf.Max(s + production - consumption + playerNet,
                 sStar * MarketTuning.StockFloorFraction);
+            if (float.IsNaN(s) || float.IsInfinity(s))
+            {
+                Log.ErrorOnce($"[Invisible Hand] Non-finite stock computed for {def.defName}. Resetting to equilibrium.", def.shortHash ^ 0x0F17E);
+                s = sStar;
+            }
             st.stock[def] = s;
 
             float closing = p0 * PriceRatio(sStar, s, profile.alpha);
+            if (float.IsNaN(closing) || float.IsInfinity(closing))
+            {
+                continue;
+            }
             manager.priceModifiers[def] = closing;
             Telemetry.Record(def, p0, closing, s, sStar, c0, consumption, production, playerNet, shock, news); //flagged for later removal
         }

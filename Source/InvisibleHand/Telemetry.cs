@@ -3,19 +3,20 @@ using System.Text;
 using LudeonTK;
 using RimWorld;
 using Verse;
+using UnityEngine;
 
 namespace InvisibleHand;
 
 //Logging for balancing and tuning - remove later//
 public static class Telemetry
 {
-    public const int SchemaVersion = 4;
+    public const int SchemaVersion = 5;
     public static bool Enabled = true;
 
     private const string ItemsHeader =
         "schema;gameId;sessionId;day;defName;archetype;p0;price;priceRatio;stock;sStar;stockRatio;c0;consumption;production;playerNet;demandShock;newsShock";
     private const string WorldHeader =
-        "schema;gameId;sessionId;day;tick;activity;baselineActivity;activityRatio;worldFlow;universeCount";
+        "schema;gameId;sessionId;day;tick;activity;smoothedActivity;baselineActivity;activityRatio;worldFlow;universeCount";
 
     private static StringBuilder itemRows;
     private static string gameId;
@@ -23,7 +24,7 @@ public static class Telemetry
 
     public static void NewSession()
     {
-        sessionId = System.DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmssZ");
+        sessionId = System.DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmssfff'Z'");
     }
     private static int day;
 
@@ -36,16 +37,21 @@ public static class Telemetry
         {
             return;
         }
-        gameId = $"{Find.World.info.seedString}-{Find.World.info.persistentRandomValue}";
-        sessionId ??= System.DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmssZ"); // defensive; FinalizeInit normally mints
+        gameId = $"{Find.World.info.seedString}-{Find.World.info.persistentRandomValue}"
+            .Replace(';', '_').Replace('\n', '_').Replace('\r', '_'); //added for .csv safety
+        sessionId ??= System.DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmssfff'Z'");
         day = Find.TickManager.TicksGame / GenDate.TicksPerDay;
         itemRows = new StringBuilder(256 * st.universe.Count);
  
         float activity = MarketState.CurrentActivity();
-        float ratio = st.BaselineActivity > 0f ? activity / st.BaselineActivity : 1f;
+        float ratio = st.BaselineActivity > 0f
+            ? Mathf.Clamp(st.SmoothedActivity / st.BaselineActivity,
+                MarketTuning.ActivityRatioMin, MarketTuning.ActivityRatioMax)
+            : 1f;
         string worldRow = string.Join(";",
             SchemaVersion, gameId, sessionId, day, Find.TickManager.TicksGame,
-            activity.ToString("F0"), st.BaselineActivity.ToString("F0"),
+            activity.ToString("F0"), st.SmoothedActivity.ToString("F1"),
+            st.BaselineActivity.ToString("F0"),
             ratio.ToString("F3"), st.worldFlow.ToString("F0"), st.universe.Count);
         Append(WorldPath, WorldHeader, worldRow + "\n");
     }
@@ -98,7 +104,7 @@ public static class Telemetry
             }
             File.AppendAllText(path, content);
         }
-        catch (IOException e)
+        catch (System.Exception e)
         {
             Log.WarningOnce($"[Invisible Hand] Telemetry write failed (file open in another program?): {e.Message}",
                 path.GetHashCode());

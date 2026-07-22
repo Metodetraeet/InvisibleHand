@@ -96,7 +96,7 @@ public static class Classifier
         return Archetype.General;
     }
 
-    public static MarketProfile ProfileFor(ThingDef def)
+    private static MarketProfile RawProfileFor(ThingDef def)
     {
         var archetype = Classify(def);
         if (archetype == Archetype.Excluded)
@@ -125,21 +125,31 @@ public static class Classifier
             if (ext.supplyElasticity >= 0f) es = ext.supplyElasticity;
             if (ext.drainCap >= 0f) cap = ext.drainCap;
         }
-          if (float.IsNaN(depth) || float.IsInfinity(depth) || depth <= 0f
-            || float.IsNaN(alpha) || float.IsInfinity(alpha) || alpha <= 0f
-            || float.IsNaN(ed) || float.IsInfinity(ed)
-            || float.IsNaN(es) || float.IsInfinity(es)
-            || ed + es <= 0f
-            || float.IsNaN(cap) || float.IsInfinity(cap) || cap <= 0f)
+        return new MarketProfile(depth, alpha, ed, es, cap);
+    }
+
+    public static MarketProfile ProfileFor(ThingDef def)
+    {
+        var p = RawProfileFor(def);
+        if (float.IsNaN(p.depthDays) || float.IsInfinity(p.depthDays) || p.depthDays <= 0f
+            || float.IsNaN(p.alpha) || float.IsInfinity(p.alpha) || p.alpha <= 0f
+            || float.IsNaN(p.demandElasticity) || float.IsInfinity(p.demandElasticity)
+            || float.IsNaN(p.supplyElasticity) || float.IsInfinity(p.supplyElasticity)
+            || p.demandElasticity + p.supplyElasticity <= 0f
+            || float.IsNaN(p.drainCap) || float.IsInfinity(p.drainCap) || p.drainCap <= 0f
+            || p.alpha > 10f || p.demandElasticity > 10f || p.supplyElasticity > 10f //prevents pow overflow
+            || p.alpha * (p.demandElasticity + p.supplyElasticity) > 0.5f * p.depthDays //prevents overshooting self-corrections
+            || p.depthDays > 3650f)
         {
-            Log.ErrorOnce($"[Invisible Hand] Invalid market profile on {def.defName}; using General fallback.", def.shortHash ^ 0x5AFE);
+            Log.ErrorOnce($"[Invisible Hand] Invalid market profile on {def.defName}. Using General fallback.", def.shortHash ^ 0x5AFE);
             return MarketProfiles.ByArchetype[Archetype.General];
         }
-        return new MarketProfile(depth, alpha, ed, es, cap);
+        return p;
     }
 
     public static float VanillaMarketValue(ThingDef def) //temporarry home. Borrowed from VTE authors
     {
+        bool previous = StatWorker_GetBaseValueFor_Patch.outputOnlyVanilla;
         StatWorker_GetBaseValueFor_Patch.outputOnlyVanilla = true;
         try
         {
@@ -147,7 +157,7 @@ public static class Classifier
         }
         finally
         {
-            StatWorker_GetBaseValueFor_Patch.outputOnlyVanilla = false;
+            StatWorker_GetBaseValueFor_Patch.outputOnlyVanilla = previous;
         }
     }
 
@@ -163,7 +173,7 @@ public static class Classifier
     {
         foreach (var def in universe)
         {
-            var p = ProfileFor(def);
+            var p = RawProfileFor(def);
             string problem = null;
             if (float.IsNaN(p.depthDays) || float.IsNaN(p.alpha) || float.IsNaN(p.demandElasticity)
                 || float.IsNaN(p.supplyElasticity) || float.IsNaN(p.drainCap))

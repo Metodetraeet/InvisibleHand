@@ -22,6 +22,7 @@ public class MarketState : GameComponent
     private bool engineActive;
     private float smoothedActivity;
     public float BaselineActivity => baselineActivity; //flagged for later removal
+    public float SmoothedActivity => smoothedActivity;
 
     //derived state
     public List<ThingDef> universe = new();
@@ -59,10 +60,46 @@ public class MarketState : GameComponent
         }
         ComputeFlows(smoothedActivity);
         InitializeStocks();
+        RepublishPrices();
         if (!engineActive)
         {
             pendingUnits.Clear();
             engineActive = true;
+        }
+    }
+
+    private void RepublishPrices()
+    {
+        var manager = TradingManager.Instance;
+        if (manager == null)
+        {
+            return;
+        }
+        if (VanillaTradingExpandedMod.settings?.enablePriceFluctuationRestriction == true)
+        {
+            Log.Message("[Invisible Hand] Note: Vanilla Trading Expanded's 'price fluctuation restriction' " +
+                "setting has no effect while Invisible Hand is running. This mod replaces VTE's price " +
+                "simulation with its own supply-and-demand model, which keeps prices within sane bounds on its own. " +
+                "Safe to ignore, or disable the VTE setting to clear this notice.");
+        }
+        manager.priceModifiers ??= new Dictionary<ThingDef, float>();
+        foreach (var def in universe)
+        {
+            if (!stock.TryGetValue(def, out var s) || s <= 0f
+                || !c0Units.TryGetValue(def, out var c0) || c0 <= 0f)
+            {
+                continue;
+            }
+            var profile = Classifier.ProfileFor(def);
+            float sStar = profile.depthDays * c0;
+            float p0 = Classifier.VanillaMarketValue(def);
+            if (sStar <= 0f || p0 <= 0f)
+            {
+                continue;
+            }
+            manager.priceModifiers[def] = p0 * Mathf.Clamp(
+                Mathf.Pow(sStar / s, profile.alpha),
+                MarketTuning.PriceRatioMin, MarketTuning.PriceRatioMax);
         }
     }
 
@@ -181,7 +218,7 @@ public class MarketState : GameComponent
         //changes in number of settlements impact maket depth daily
         smoothedActivity = Mathf.Lerp(smoothedActivity, CurrentActivity(), 1f / 15f);
         ComputeFlows(smoothedActivity);
-        if (pendingUnits.Count > 0)
+        if (pendingUnits.Count > 0 && Telemetry.Enabled)
         {
             var sb = new StringBuilder("[Invisible Hand] Daily buffer:");
             foreach (var kvp in pendingUnits)
@@ -217,6 +254,10 @@ public class MarketState : GameComponent
             pendingUnits.RemoveAll(kvp => Classifier.Classify(kvp.Key) == Archetype.Excluded);
             demandShock.RemoveAll(kvp => Classifier.Classify(kvp.Key) == Archetype.Excluded);
             newsShock.RemoveAll(kvp => Classifier.Classify(kvp.Key) == Archetype.Excluded);
+            demandShock.RemoveAll(kvp => float.IsNaN(kvp.Value) || float.IsInfinity(kvp.Value));
+            newsShock.RemoveAll(kvp => float.IsNaN(kvp.Value) || float.IsInfinity(kvp.Value));
+            stock.RemoveAll(kvp => float.IsNaN(kvp.Value) || float.IsInfinity(kvp.Value));
+            pendingUnits.RemoveAll(kvp => float.IsNaN(kvp.Value) || float.IsInfinity(kvp.Value));
         }
     }
 
@@ -268,11 +309,9 @@ public class MarketState : GameComponent
         Instance.pendingUnits.Clear();
         Instance.demandShock.Clear();
         Instance.newsShock.Clear();
-        Instance.ComputeFlows(CurrentActivity());
+        Instance.ComputeFlows(Instance.smoothedActivity);
         Instance.InitializeStocks();
         Log.Message("[Invisible Hand] Market state cleared and re-initialized from current prices. " +
             "(For a true vanilla reset, use VTE's 'Reset price changes' first, then this.)");
     }
 }
-
-

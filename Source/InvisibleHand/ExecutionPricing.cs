@@ -5,7 +5,7 @@ using Verse;
 
 namespace InvisibleHand;
 
-//trades execute at the average price across the price range they traverse (implemented in AvgOverSpot). As a result, buying and then immediately selling always loses the spread
+//trades execute at the average price across the price range they traverse (implemented in AvgClampedCurve). As a result, buying and then immediately selling always loses the spread
 //effective stock includes same-day pending trades so splitting a dump into many deals can't recover flat pricing
 [HarmonyPatch(typeof(Tradeable), nameof(Tradeable.GetPriceFor))]
 public static class Tradeable_GetPriceFor_Patch
@@ -49,50 +49,77 @@ public static class ExecutionPricing
         st.pendingUnits.TryGetValue(def, out var pending);
         s = Mathf.Max(s + pending, sStar * MarketTuning.StockFloorFraction);
 
-        float relSpot = Mathf.Clamp(Mathf.Pow(sStar / s, profile.alpha),
-            MarketTuning.PriceRatioMin, MarketTuning.PriceRatioMax);
-        float x = count / s;
-        float factor;
+        float avgAbs;
         if (selling)
         {
-            factor = AvgOverSpot(x, profile.alpha, up: true);
-        }
-        else if (x <= 0.95f)
-        {
-            factor = AvgOverSpot(x, profile.alpha, up: false);
+            avgAbs = AvgClampedCurve(sStar, s, s + count, profile.alpha);
         }
         else
         {
-            //the curve prices the first 95% of available stock. Any excess units are priced at the band ceiling, so marginal prices never fall as order size grows
-            float curveUnits = 0.95f * s;
-            float ceilingUnits = count - curveUnits;
-            float curveAvg = AvgOverSpot(0.95f, profile.alpha, up: false);
-            float ceilingFactor = MarketTuning.PriceRatioMax / relSpot;
-            factor = (curveAvg * curveUnits + ceilingFactor * ceilingUnits) / count;
+            //a purchase can exceed the market's drainable stock. The curve prices only down to the same 2% floor
+            //this prevents undercharging big buys and should break the invariance from splitting purchases
+            float physicalFloor = sStar * MarketTuning.StockFloorFraction;
+            float curveUnits = Mathf.Min(count, Mathf.Max(s - physicalFloor, 0f));
+            float excessUnits = count - curveUnits;
+            float total = 0f;
+            if (curveUnits > 0f)
+            {
+                total += curveUnits * AvgClampedCurve(sStar, s - curveUnits, s, profile.alpha);
+            }
+            if (excessUnits > 0f)
+            {
+                float floorPrice = Mathf.Clamp(
+                    Mathf.Pow(sStar / physicalFloor, profile.alpha),
+                    MarketTuning.PriceRatioMin, MarketTuning.PriceRatioMax);
+                total += excessUnits * floorPrice;
+            }
+            avgAbs = total / count;
         }
-        //keep the implied average inside the global price band
-        return Mathf.Clamp(factor,
-            MarketTuning.PriceRatioMin / relSpot, MarketTuning.PriceRatioMax / relSpot);
+
+        //__result is priced at yesterday's closing stock, while avgAbs is measured on today's effective stock. Without this division, splitting a dump into many deals would decrease the price
+        float relClose = Mathf.Clamp(Mathf.Pow(sStar / sClose, profile.alpha),
+            MarketTuning.PriceRatioMin, MarketTuning.PriceRatioMax);
+        return Mathf.Clamp(avgAbs, MarketTuning.PriceRatioMin, MarketTuning.PriceRatioMax) / relClose;
     }
 
-    //path-average execution price relative to spot, p(S) ∝ S^-alpha
-    //x = trade size / current stock
-    //sell: ((1+x)^(1-a)-1)/((1-a)x)
-    //buy: (1-(1-x)^(1-a))/((1-a)x)
-    //at alpha = 1, use the logarithmic limit forms
-    private static float AvgOverSpot(float x, float alpha, bool up)
+    //closed-form average of the clamped marginal price ratio
+    //marginal price at stock S: (S*/S)^alpha, clamped to [PriceRatioMin, PriceRatioMax]
+    //sell: I(v) = (1 - (1+v)^(1-a))/(a-1)   (a != 1),   ln(1+v)  (a = 1)
+    //buy:  I(v) = ((1-v)^(1-a) - 1)/(a-1)   (a != 1),  -ln(1-v)  (a = 1)
+    //average of clamp((S*/S')^a, PriceRatioMin, PriceRatioMax) over S' in [lo, hi]
+    private static float AvgClampedCurve(float sStarF, float loF, float hiF, float alphaF)
     {
-        if (x < 1e-6f)
+        double sStar = sStarF, lo = loF, hi = hiF, a = alphaF;
+        if (hi - lo < 1e-9)
         {
-            return 1f;
+            double rel = System.Math.Pow(sStar / lo, a);
+            return (float)System.Math.Min(System.Math.Max(rel, MarketTuning.PriceRatioMin), MarketTuning.PriceRatioMax);
         }
-        if (Mathf.Abs(alpha - 1f) < 1e-4f)
+        // Stock thresholds where the raw curve crosses the band edges.
+        double ceilingStock = sStar * System.Math.Pow(MarketTuning.PriceRatioMax, -1.0 / a);
+        double floorStock = sStar * System.Math.Pow(MarketTuning.PriceRatioMin, -1.0 / a);
+        double total = 0.0;
+        // Scarcity plateau: everything below ceilingStock trades at the ceiling.
+        double c2 = System.Math.Min(hi, ceilingStock);
+        if (c2 > lo)
         {
-            return up ? Mathf.Log(1f + x) / x : -Mathf.Log(1f - x) / x;
+            total += (c2 - lo) * MarketTuning.PriceRatioMax;
         }
-        float oneMinusA = 1f - alpha;
-        return up
-            ? (Mathf.Pow(1f + x, oneMinusA) - 1f) / (oneMinusA * x)
-            : (1f - Mathf.Pow(1f - x, oneMinusA)) / (oneMinusA * x);
+        // Power curve in the middle.
+        double m1 = System.Math.Max(lo, ceilingStock);
+        double m2 = System.Math.Min(hi, floorStock);
+        if (m2 > m1)
+        {
+            total += System.Math.Abs(a - 1.0) < 1e-9
+                ? sStar * System.Math.Log(m2 / m1)
+                : System.Math.Pow(sStar, a) * (System.Math.Pow(m2, 1.0 - a) - System.Math.Pow(m1, 1.0 - a)) / (1.0 - a);
+        }
+        // Glut plateau: everything above floorStock trades at the floor.
+        double f1 = System.Math.Max(lo, floorStock);
+        if (hi > f1)
+        {
+            total += (hi - f1) * MarketTuning.PriceRatioMin;
+        }
+        return (float)(total / (hi - lo));
     }
 }
