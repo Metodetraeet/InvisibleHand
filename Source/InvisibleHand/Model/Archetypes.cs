@@ -103,4 +103,3 @@ public class MarketProfileExtension : DefModExtension
     public float supplyElasticity = -1f;
     public float drainCap = -1f;
 }
-

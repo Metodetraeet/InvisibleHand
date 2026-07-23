@@ -1,4 +1,3 @@
-using HarmonyLib;
 using Verse;
 
 namespace InvisibleHand;
@@ -8,8 +7,6 @@ public static class Startup
 {
     static Startup()
     {
-         var harmony = new Harmony("metodetraeet.InvisibleHand");
-            harmony.PatchAll();
-            Log.Message("[Invisible Hand] loaded, patches applied.");
-        }
+        CompatibilityBootstrap.Run();
+    }
 }

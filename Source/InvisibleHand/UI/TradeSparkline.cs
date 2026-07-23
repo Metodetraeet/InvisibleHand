@@ -8,6 +8,7 @@ using Verse;
 
 namespace InvisibleHand;
 
+[HarmonyPatchCategory(CompatibilityBootstrap.OptionalCategory)]
 [HarmonyPatch(typeof(TransferableUIUtility), nameof(TransferableUIUtility.DoCountAdjustInterface))]
 public static class TransferableUIUtility_DoCountAdjustInterface_Patch
 {

@@ -46,6 +46,11 @@ public class MarketState : GameComponent
     public override void FinalizeInit()
     {
         base.FinalizeInit();
+        if (!CompatibilityStatus.EngineEnabled)
+        {
+            CompatibilityBootstrap.ShowFailureDialogOnce();
+            return;
+        }
         universe = Classifier.BuildUniverse();
         Classifier.ValidateProfiles(universe);
         Telemetry.NewSession();
@@ -211,7 +216,8 @@ public class MarketState : GameComponent
 
     public override void GameComponentTick()
     {
-        if (Find.TickManager.TicksGame % GenDate.TicksPerDay != 0)
+        if (!CompatibilityStatus.EngineEnabled
+            || Find.TickManager.TicksGame % GenDate.TicksPerDay != 0)
         {
             return;
         }

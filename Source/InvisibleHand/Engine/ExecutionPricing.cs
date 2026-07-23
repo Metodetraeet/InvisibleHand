@@ -7,6 +7,7 @@ namespace InvisibleHand;
 
 //trades execute at the average price across the price range they traverse (implemented in MarketMath.AverageClampedCurve). As a result, buying and then immediately selling always loses the spread
 //effective stock includes same-day pending trades so splitting a dump into many deals can't recover flat pricing
+[HarmonyPatchCategory(CompatibilityBootstrap.CriticalCategory)]
 [HarmonyPatch(typeof(Tradeable), nameof(Tradeable.GetPriceFor))]
 public static class Tradeable_GetPriceFor_Patch
 {
@@ -27,7 +28,7 @@ public static class ExecutionPricing
     public static float ImpactFactor(ThingDef def, int count, bool selling)
     {
         var st = MarketState.Instance;
-        if (st == null || count <= 0
+        if (!CompatibilityStatus.EngineEnabled || st == null || count <= 0
             || !st.c0Units.TryGetValue(def, out var c0) || c0 <= 0f
             || Classifier.Classify(def) == Archetype.Excluded)
         {

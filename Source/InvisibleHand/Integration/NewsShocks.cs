@@ -7,13 +7,14 @@ namespace InvisibleHand;
 
 //VTE item news becomes a demand shock calibrated to peak near the 1–5% price impact. Demand fades over ~30 days and the resulting stock imbalance recovers at the market's own pace 
 //company and stock-market news is untouched.
+[HarmonyPatchCategory(CompatibilityBootstrap.OptionalCategory)]
 [HarmonyPatch(typeof(NewsWorker_TradeItemsImpact), nameof(NewsWorker_TradeItemsImpact.AffectPrices))]
 public static class NewsWorker_TradeItemsImpact_AffectPrices_Patch
 {
     public static bool Prefix(News news)
     {
         var st = MarketState.Instance;
-        if (st == null)
+        if (!CompatibilityStatus.EngineEnabled || st == null)
         {
             return true;
         }
