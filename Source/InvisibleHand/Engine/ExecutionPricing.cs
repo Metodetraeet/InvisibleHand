@@ -57,7 +57,7 @@ public static class ExecutionPricing
         else
         {
             //a purchase can exceed the market's drainable stock. The curve prices only down to the same 2% floor
-            //this prevents undercharging big buys and should break the invariance from splitting purchases
+            //this prevents undercharging big buys and should preserve split invariance
             float physicalFloor = sStar * MarketTuning.StockFloorFraction;
             float curveUnits = Mathf.Min(count, Mathf.Max(s - physicalFloor, 0f));
             float excessUnits = count - curveUnits;
