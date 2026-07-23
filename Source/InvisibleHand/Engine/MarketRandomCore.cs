@@ -2,7 +2,6 @@ using System;
 
 namespace InvisibleHand;
 
-//explicit save/model semantics - values must not be reordered or reused (see spec section 9.5)
 public enum MarketRandomStream
 {
     AmbientDemandShock = 10,
@@ -11,13 +10,9 @@ public enum MarketRandomStream
     ArchetypeDemandShock = 40
 }
 
-//pure deterministic randomness pipeline: FNV-1a keying -> SplitMix64 -> Box-Muller.
-//depends only on System so tests can link this file directly (same discipline as MarketMath).
-//never touches Verse.Rand - the shared stream stays untouched by market simulation.
+//never touches Verse.Rand 
 public static class MarketRandomCore
 {
-    //bumping this re-keys every draw. It changes the realized future random path of
-    //existing saves exactly once and requires a release note (spec section 9.7)
     public const int MarketRngVersion = 1;
 
     private const ulong FnvOffsetBasis = 14695981039346656037UL; //0xCBF29CE484222325
@@ -46,7 +41,6 @@ public static class MarketRandomCore
         }
     }
 
-    //ordinal, culture-free, stable across runtimes - never string.GetHashCode()
     public static ulong Fnv1a(ulong hash, string text)
     {
         if (text == null)
@@ -63,7 +57,6 @@ public static class MarketRandomCore
         return Fnv1a(hash, text.Length);
     }
 
-    //world-level base hash: package identity + RNG schema + world seed identity.
     //recomputed whenever the world changes, so no state leaks between games.
     public static ulong WorldBaseHash(string packageId, int rngVersion,
         string worldSeedString, int worldPersistentValue)
@@ -76,9 +69,6 @@ public static class MarketRandomCore
         return h;
     }
 
-    //per-draw key: stable identity string (defName or archetype tag), game day,
-    //explicit stream ID, draw index. Enumeration order can never matter because
-    //every draw is keyed independently.
     public static ulong DrawKey(ulong worldBaseHash, string identity,
         int day, int stream, int drawIndex)
     {
@@ -102,8 +92,6 @@ public static class MarketRandomCore
         }
     }
 
-    //strictly inside (0,1): top 53 bits plus a half-ulp offset - never 0, never 1,
-    //so Log(u1) below is always finite
     public static double NextUniform(ref ulong state)
     {
         return ((SplitMix64(ref state) >> 11) + 0.5) * (1.0 / 9007199254740992.0);

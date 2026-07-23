@@ -1,6 +1,7 @@
 using UnityEngine;
 using VanillaTradingExpanded;
 using Verse;
+using RimWorld;
 
 namespace InvisibleHand;
 
@@ -15,6 +16,7 @@ public static class MarketEngine
             return;
         }
         manager.priceModifiers ??= new System.Collections.Generic.Dictionary<ThingDef, float>();
+        int day = Find.TickManager.TicksGame / GenDate.TicksPerDay;
         Telemetry.BeginDay(st); //flagged for later removal
 
         foreach (var def in st.universe)
@@ -42,7 +44,8 @@ public static class MarketEngine
             //ambient demand shock. Persistent good-months and bad-months. 
             st.demandShock.TryGetValue(def, out var shock);
             shock = MarketTuning.ShockRho * shock
-                + MarketTuning.ShockSigma * Rand.Gaussian();
+                + MarketTuning.ShockSigma * (float)MarketRandom.Gaussian(
+                    def, day, MarketRandomStream.AmbientDemandShock);
             st.demandShock[def] = shock;
             st.newsShock.TryGetValue(def, out var news);
             if (news != 0f)
@@ -64,10 +67,12 @@ public static class MarketEngine
             float consumption = c0
                 * Mathf.Min(Mathf.Pow(rel, -profile.demandElasticity), profile.drainCap)
                 * demandMult
-                * FlowNoise();
+                * FlowNoise((float)MarketRandom.Gaussian(
+                    def, day, MarketRandomStream.MarketOutflowNoise));
             float production = c0
                 * Mathf.Pow(rel, profile.supplyElasticity)
-                * FlowNoise();
+                * FlowNoise((float)MarketRandom.Gaussian(
+                    def, day, MarketRandomStream.MarketInflowNoise));
 
             st.pendingUnits.TryGetValue(def, out var playerNet);
 
@@ -98,9 +103,9 @@ public static class MarketEngine
             MarketTuning.PriceRatioMin, MarketTuning.PriceRatioMax);
     }
 
-    private static float FlowNoise()
+    private static float FlowNoise(float gaussian)
     {
         float sigma = MarketTuning.FlowNoiseSigma;
-        return Mathf.Exp(sigma * Rand.Gaussian() - 0.5f * sigma * sigma);
+        return Mathf.Exp(sigma * gaussian - 0.5f * sigma * sigma);
     }
 }
