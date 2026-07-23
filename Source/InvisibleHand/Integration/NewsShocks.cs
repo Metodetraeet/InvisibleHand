@@ -34,29 +34,13 @@ public static class NewsWorker_TradeItemsImpact_AffectPrices_Patch
                 continue; //never mint shock records for defs the engine won't simulate
             }
             var p = Classifier.ProfileFor(def);
-            float kick = sign * Mathf.Log(1f + impact) / PeakGain(p);
+            float kick = sign * Mathf.Log(1f + impact) / (float)MarketMath.PeakGain(
+                p.depthDays, p.alpha, p.demandElasticity, p.supplyElasticity,
+                MarketTuning.NewsShockEFoldingDays);
             st.newsShock.TryGetValue(def, out var current);
             st.newsShock[def] = Mathf.Clamp(current + kick,
                 -MarketTuning.NewsShockMax, MarketTuning.NewsShockMax);
         }
         return false;
-    }
-
-    //linearized price response used to derive peak gain:
-    //pi(t) = K*a*(e^-lambda*t - e^-beta*t)/(beta-lambda):
-    //a = alpha/depth, lambda = alpha*(ed+es)/depth, beta = 1/eFold.
-    private static float PeakGain(MarketProfile p)
-    {
-        float a = p.alpha / p.depthDays;
-        float lambda = p.alpha * (p.demandElasticity + p.supplyElasticity) / p.depthDays;
-        float beta = 1f / MarketTuning.NewsShockEFoldingDays;
-        if (Mathf.Abs(beta - lambda) < 1e-5f)
-        {
-            float ts = 1f / beta;
-            return Mathf.Max(a * ts * Mathf.Exp(-beta * ts), 1e-4f);
-        }
-        float tStar = Mathf.Log(beta / lambda) / (beta - lambda);
-        float g = a * (Mathf.Exp(-lambda * tStar) - Mathf.Exp(-beta * tStar)) / (beta - lambda);
-        return Mathf.Max(g, 1e-4f);
     }
 }

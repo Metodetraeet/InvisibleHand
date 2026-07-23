@@ -39,7 +39,8 @@ public static class MarketEngine
             }
 
             //price formed from yesterday's closing stock, flows respond to it today.
-            float rel = PriceRatio(sStar, s, profile.alpha);
+            float rel = (float)MarketMath.PriceRatio(sStar, s, profile.alpha,
+                MarketTuning.PriceRatioMin, MarketTuning.PriceRatioMax);
 
             //ambient demand shock. Persistent good-months and bad-months. 
             st.demandShock.TryGetValue(def, out var shock);
@@ -85,7 +86,8 @@ public static class MarketEngine
             }
             st.stock[def] = s;
 
-            float closing = p0 * PriceRatio(sStar, s, profile.alpha);
+            float closing = p0 * (float)MarketMath.PriceRatio(sStar, s, profile.alpha,
+                MarketTuning.PriceRatioMin, MarketTuning.PriceRatioMax);
             if (float.IsNaN(closing) || float.IsInfinity(closing))
             {
                 continue;
@@ -95,12 +97,6 @@ public static class MarketEngine
         }
         st.pendingUnits.Clear();
         Telemetry.EndDay(); //flagged for later removal
-    }
-
-    private static float PriceRatio(float sStar, float s, float alpha)
-    {
-        return Mathf.Clamp(Mathf.Pow(sStar / s, alpha),
-            MarketTuning.PriceRatioMin, MarketTuning.PriceRatioMax);
     }
 
     private static float FlowNoise(float gaussian)

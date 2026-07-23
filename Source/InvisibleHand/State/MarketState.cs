@@ -97,8 +97,8 @@ public class MarketState : GameComponent
             {
                 continue;
             }
-            manager.priceModifiers[def] = p0 * Mathf.Clamp(
-                Mathf.Pow(sStar / s, profile.alpha),
+            manager.priceModifiers[def] = p0 * (float)MarketMath.PriceRatio(
+                sStar, s, profile.alpha,
                 MarketTuning.PriceRatioMin, MarketTuning.PriceRatioMax);
         }
     }
@@ -190,7 +190,7 @@ public class MarketState : GameComponent
             float ratio = Mathf.Clamp(current / p0,
                 MarketTuning.InitPriceRatioMin, MarketTuning.InitPriceRatioMax);
             //invert p = p0 * (S*/S)^alpha for S: the stock that explains the price.
-            stock[def] = sStar * Mathf.Pow(1f / ratio, 1f / profile.alpha);
+            stock[def] = (float)MarketMath.StockForPriceRatio(sStar, ratio, profile.alpha);
         }
     }
 
